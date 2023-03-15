@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     char *line = NULL;
     size_t len = 0;
     int i, cut;
-    bool inside_single, inside_double, inside_curly, inside_round, whitespace;
+    bool inside_single, inside_double, inside_curly, inside_round;
 
     if (!isatty(STDIN_FILENO) || argc < 2 || (argv[1] == "-")) {
         // using standard input
@@ -25,8 +25,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    while ((size = getline(&line, &len, f)) != -1)
-    {
+    while ((size = getline(&line, &len, f)) != -1) {
+
 	cut = size;
 
 	inside_curly = false;
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	inside_double = false;
 
 	// process line backwards
-	for (i = size; i > 0; i--) {
+	for (i = size-1; i >= 0; i--) {
 	    switch (line[i]) {
 		case '}':
 		    inside_curly = true;
@@ -57,29 +57,31 @@ int main(int argc, char **argv) {
 		    break;
 		case '#':
 		    if (!inside_single && !inside_double && !inside_curly && !inside_round)
-			if (i>0)
+			if (i>0) {
 			    // do not treat \# and $# as comments
 			    if ((line[i-1] != '\\') && (line[i-1] != '$'))
 				cut = i;
+			}
+			else
+			    cut=0;
 		    break;
 		default:
 		    break;
 	    }
 	}
 
-	if (line[0] != '#')
-	    // if no cut was made, print line exacly
-	    if (cut == size)
-		printf("%s", line);
-	    else {
-		// strip any trailing spaces
-		while ((cut > 0) && isspace(line[cut-1])) {
-		    cut--;
-		}
-		// do not print modified line, if all that remains are whitespace characters
-		if (cut > 0)
-		    printf("%.*s\n", cut, line);
-	    }
+	// if no cut was made, print line exacly
+	if (cut == size)
+	    printf("%s", line);
+	else {
+	    // strip any trailing spaces
+	    while ((cut > 0) && isspace(line[cut-1])) {
+		cut--;
+	}
+	    // do not print modified line, if all that remains are whitespace characters
+	   if (cut > 0)
+		printf("%.*s\n", cut, line);
+	}
     }
 
     fclose(f);
