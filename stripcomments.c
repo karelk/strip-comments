@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
     char *line = NULL;
     size_t len = 0;
     ssize_t size, cut;
+    int nl = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     ///   open file   //////////////////////////////////////////////////////////
@@ -84,24 +85,30 @@ int main(int argc, char **argv) {
 
     if ((size = getline(&line, &len, f)) != -1) {
 
-
 	if (line[0] == '#') {
-	    if ((size > 3) && (line[1] == '!'))
+	    if ((size > 2) && (line[1] == '!'))
 		printf("%s", line);
 	}
-	else {
-	    cut = parse_line(line, size);
 
-	    // if no cut was made, print line exacly
-	    if (cut == size)
-		printf("%s", line);
+	else {
+	    if (line[0] == '\n') {
+		printf("\n");
+		nl=1;
+	    }
 	    else {
+		cut = parse_line(line, size);
+
+		// if no cut was made, print line exacly
+		if (cut == size)
+		    printf("%s", line);
+		else {
 		// strip any trailing spaces
-		while ((cut > 0) && isspace(line[cut-1]))
-		    cut--;
+		    while ((cut > 0) && isspace(line[cut-1]))
+			cut--;
 		// do not print empty lines
-		if (cut > 0)
-		    printf("%.*s\n", cut, line);
+		    if (cut > 0)
+			printf("%.*s\n", cut, line);
+		}
 	    }
 	}
 
@@ -111,18 +118,31 @@ int main(int argc, char **argv) {
 
 	while ((size = getline(&line, &len, f)) != -1) {
 
-	    cut = parse_line(line, size);
+	    if (line[0] == '\n') {
+		if (nl == 0) {
+		    printf("\n");
+		    nl=1;
+		}
+	    }
 
-	    // if no cut was made, print line exacly
-	    if (cut == size)
-		printf("%s", line);
 	    else {
-		// strip any trailing spaces
-		while ((cut > 0) && isspace(line[cut-1]))
-		    cut--;
-		// do not print empty lines
-		if (cut > 0)
-		    printf("%.*s\n", cut, line);
+		cut = parse_line(line, size);
+
+		// if no cut was made, print line exacly
+		if (cut == size) {
+			printf("%s", line);
+			nl = 0;
+		}
+		else {
+		    // strip any trailing spaces
+		    while ((cut > 0) && isspace(line[cut-1]))
+			cut--;
+		    // do not print empty lines
+		    if (cut > 0) {
+			printf("%.*s\n", cut, line);
+			nl = 0;
+			}
+		}
 	    }
 	}
     }
