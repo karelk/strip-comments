@@ -9,6 +9,22 @@
 ///   function   ///////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+void process_line_output(char *line, ssize_t cut, ssize_t size, int *nl) {
+    if (cut == size) {
+        printf("%s", line);
+        *nl = 0;
+    } else {
+        // strip any trailing spaces
+        while ((cut > 0) && isspace(line[cut-1]))
+            cut--;
+        // do not print empty lines
+        if (cut > 0) {
+            printf("%.*s\n", cut, line);
+            *nl = 0;
+        }
+    }
+}
+
 ssize_t parse_line(char *ln, ssize_t sz) {
 
     ssize_t i;
@@ -16,8 +32,14 @@ ssize_t parse_line(char *ln, ssize_t sz) {
     int round = 0;
     bool single_q = false;
     bool double_q = false;
+    bool escaped = false;
 
     for (i = 0; i < sz; i++) {
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        
 	    switch (ln[i]) {
 		case '#':
 		    if (i == 0)
@@ -26,27 +48,36 @@ ssize_t parse_line(char *ln, ssize_t sz) {
 			// the magic happens here:
 			if (!single_q && !double_q)
 			    if ((curly <= 0) && (round <= 0))
-				if ((ln[i-1] != '$') && (ln[i-1] != '\\'))
+				if (i > 0 && (ln[i-1] != '$') && (ln[i-1] != '\\') && (ln[i-1] != '='))
 				    return i;
 		    }
 		    break;
+		case '\\':
+		    escaped = true;
+		    break;
 		case '\'':
-		    single_q = !single_q;
+		    if (!escaped)
+		        single_q = !single_q;
 		    break;
 		case '\"':
-		    double_q = !double_q;
+		    if (!escaped)
+		        double_q = !double_q;
 		    break;
 		case '{':
-		    curly++;
+		    if (!single_q && !double_q)
+		        curly++;
 		    break;
 		case '}':
-		    curly--;
+		    if (!single_q && !double_q)
+		        curly--;
 		    break;
 		case '(':
-		    round++;
+		    if (!single_q && !double_q)
+		        round++;
 		    break;
 		case ')':
-		    round--;
+		    if (!single_q && !double_q)
+		        round--;
 		    break;
 		default:
 		    break;
@@ -97,18 +128,7 @@ int main(int argc, char **argv) {
 	    }
 	    else {
 		cut = parse_line(line, size);
-
-		// if no cut was made, print line exacly
-		if (cut == size)
-		    printf("%s", line);
-		else {
-		// strip any trailing spaces
-		    while ((cut > 0) && isspace(line[cut-1]))
-			cut--;
-		// do not print empty lines
-		    if (cut > 0)
-			printf("%.*s\n", cut, line);
-		}
+		process_line_output(line, cut, size, &nl);
 	    }
 	}
 
@@ -127,22 +147,7 @@ int main(int argc, char **argv) {
 
 	    else {
 		cut = parse_line(line, size);
-
-		// if no cut was made, print line exacly
-		if (cut == size) {
-			printf("%s", line);
-			nl = 0;
-		}
-		else {
-		    // strip any trailing spaces
-		    while ((cut > 0) && isspace(line[cut-1]))
-			cut--;
-		    // do not print empty lines
-		    if (cut > 0) {
-			printf("%.*s\n", cut, line);
-			nl = 0;
-			}
-		}
+		process_line_output(line, cut, size, &nl);
 	    }
 	}
     }
@@ -151,7 +156,8 @@ int main(int argc, char **argv) {
     ///   finish   /////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    fclose(f);
+    if (f != stdin)
+        fclose(f);
     if (line)
         free(line);
     exit(EXIT_SUCCESS);
